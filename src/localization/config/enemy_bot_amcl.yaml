@@ -1,4 +1,4 @@
-enemy_bot/amcl:
+amcl:
   ros__parameters:
     use_sim_time: true
     alpha1: 0.2
@@ -6,8 +6,8 @@ enemy_bot/amcl:
     alpha3: 0.2
     alpha4: 0.2
     alpha5: 0.2
-    base_frame_id: enemy_bot/base_link
-    odom_frame_id: enemy_bot/odom
+    base_frame_id: base_link
+    odom_frame_id: odom
     global_frame_id: map
     laser_model_type: "likelihood_field"
     max_beams: 60
@@ -17,7 +17,7 @@ enemy_bot/amcl:
     tf_broadcast: true
     transform_tolerance: 1.0
     map_topic: /map
-    scan_topic: /enemy_bot/scan
+    scan_topic: scan
     set_initial_pose: true
     initial_pose:
       x: 2.0

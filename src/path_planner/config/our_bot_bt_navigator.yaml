@@ -1,16 +1,9 @@
-# ==============================================================================
-# BT Navigator Configuration
-# DIFFERENCE FROM STANDARD:
-# 1. Root node scoped under 'our_bot/bt_navigator'.
-# 2. robot_base_frame set to 'our_bot/base_footprint'.
-# 3. odom_topic explicitly set to '/our_bot/odom'.
-# ==============================================================================
-our_bot/bt_navigator:
+bt_navigator:
   ros__parameters:
     use_sim_time: true
     global_frame: map
-    robot_base_frame: our_bot/base_link # Prefixed robot footprint
-    odom_topic: /our_bot/odom                # Namespaced odometry topic
+    robot_base_frame: base_link
+    odom_topic: odom
     bt_loop_duration: 10
     default_server_timeout: 20
     wait_for_service_timeout: 1000

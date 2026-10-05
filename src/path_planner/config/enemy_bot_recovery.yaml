@@ -1,4 +1,4 @@
-enemy_bot/behavior_server:
+behavior_server:
   ros__parameters:
     use_sim_time: true
     enable_stamped_cmd_vel: true
@@ -6,12 +6,16 @@ enemy_bot/behavior_server:
     footprint_topic: local_costmap/published_footprint
     cycle_frequency: 10.0
     behavior_plugins: ["spin", "backup", "wait"]
-    spin: {plugin: "nav2_behaviors::Spin"}
-    backup: {plugin: "nav2_behaviors::BackUp"}
-    wait: {plugin: "nav2_behaviors::Wait"}
-    local_frame: enemy_bot/odom
-    global_frame: map
-    robot_base_frame: enemy_bot/base_link
+    spin:
+      plugin: "nav2_behaviors::Spin"
+    backup:
+      plugin: "nav2_behaviors::BackUp"
+    wait:
+      plugin: "nav2_behaviors::Wait"
+    local_frame: odom         # Stripped prefix
+    global_frame: map         # Global map frame
+    robot_base_frame: base_link # Stripped prefix
+    transform_timeout: 0.1
     simulate_ahead_time: 2.0
     max_rotational_vel: 1.0
     min_rotational_vel: 0.1

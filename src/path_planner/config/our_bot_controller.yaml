@@ -1,4 +1,4 @@
-our_bot/controller_server:
+controller_server:
   ros__parameters:
     use_sim_time: true
     controller_frequency: 20.0
@@ -31,15 +31,15 @@ our_bot/controller_server:
       batch_size: 3000
       ax_max: 1.0
       ax_min: -1.0
-      ay_max: 0.0        # Set to 0.0 for DiffDrive
-      ay_min: 0.0        # Set to 0.0 for DiffDrive
+      ay_max: 0.0
+      ay_min: 0.0
       az_max: 1.0
       vx_std: 0.2
-      vy_std: 0.0        # Set to 0.0 for DiffDrive
+      vy_std: 0.0
       wz_std: 0.4
-      vx_max: 0.26       # Hardware limit for TurtleBot3 Waffle
+      vx_max: 0.26
       vx_min: -0.26
-      vy_max: 0.0        # Set to 0.0 for DiffDrive
+      vy_max: 0.0
       wz_max: 1.5
       iteration_count: 1
       prune_distance: 1.7
@@ -111,29 +111,27 @@ our_bot/controller_server:
         max_angle_to_furthest: 1.0
         mode: 0
 
-our_bot/local_costmap:
+local_costmap:
   local_costmap:
     ros__parameters:
       use_sim_time: true
       update_frequency: 20.0
       publish_frequency: 20.0
-      global_frame: our_bot/odom
-      robot_base_frame: our_bot/base_link
+      global_frame: odom          # Prefixes stripped
+      robot_base_frame: base_link # Prefixes stripped
       rolling_window: true
       width: 5
       height: 5
       resolution: 0.05
-      # footprint: '[ [0.15, 0.12], [0.15, -0.12], [-0.15, -0.12], [-0.15, 0.12] ]' # Matches global costmap footprint
       robot_radius: 0.20
       track_unknown_space: true
-      plugins: ["voxel_layer", "inflation_layer", "enemy_danger_layer"]
+      plugins: ["voxel_layer", "inflation_layer"]
 
-    # 2. Define the layer parameters
-      enemy_danger_layer:
-        plugin: "enemy_danger_layer/EnemyDangerLayer"
-        enemy_frame: "enemy_bot/base_link"  # Set to exact TF frame of enemy base
-        danger_radius: 0.5               # FOV radius in meters
-        enabled: True
+      # enemy_danger_layer:
+      #   plugin: "enemy_danger_layer/EnemyDangerLayer"
+      #   enemy_frame: "robot2/base_link"  # Hardcoded fallback; override in launch if needed
+      #   danger_radius: 0.5
+      #   enabled: True
 
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
@@ -150,13 +148,13 @@ our_bot/local_costmap:
         mark_threshold: 0
         observation_sources: scan
         scan:
-          topic: /our_bot/scan
+          topic: scan             # Auto-namespaced relative topic
           max_obstacle_height: 2.0
           clearing: True
           marking: True
           data_type: "LaserScan"
           raytrace_max_range: 3.0
-          raytrace_min_range: 0.15      # Increased from 0.0 to prevent chassis self-clearing
+          raytrace_min_range: 0.15
           obstacle_max_range: 2.5
-          obstacle_min_range: 0.15      # Increased from 0.0 to prevent chassis self-marking
+          obstacle_min_range: 0.15
       always_send_full_costmap: True
