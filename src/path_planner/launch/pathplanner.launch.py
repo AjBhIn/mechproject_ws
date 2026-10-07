@@ -10,9 +10,15 @@ from nav2_common.launch import RewrittenYaml
 def generate_launch_description():
     ns1 = LaunchConfiguration('namespace1')
     ns2 = LaunchConfiguration('namespace2')
+    use_sim_time = LaunchConfiguration('use_sim_time')
     
     declare_ns1 = DeclareLaunchArgument('namespace1', default_value='our_bot')
     declare_ns2 = DeclareLaunchArgument('namespace2', default_value='enemy_bot')
+    declare_use_sim_time_cmd = DeclareLaunchArgument(
+        'use_sim_time',
+        default_value='true',
+        description='Use simulation (Gazebo) clock if true, hardware clock if false'
+    )
     
     plan_pkg_share = get_package_share_directory('path_planner')
 
@@ -69,7 +75,7 @@ def generate_launch_description():
     )
     lifecycle_ns1 = Node(
         package='nav2_lifecycle_manager', executable='lifecycle_manager', name='lifecycle_manager_nav_ns1', output='screen', 
-        parameters=[{'use_sim_time': True, 'autostart': True, 'bond_timeout': 0.0, 
+        parameters=[{'use_sim_time': use_sim_time, 'autostart': True, 'bond_timeout': 0.0, 
                      'node_names': [[ns1, '/planner_server'], [ns1, '/controller_server'], [ns1, '/behavior_server'], [ns1, '/bt_navigator']]}]
     )
 
@@ -99,13 +105,14 @@ def generate_launch_description():
     )
     lifecycle_ns2 = Node(
         package='nav2_lifecycle_manager', executable='lifecycle_manager', name='lifecycle_manager_nav_ns2', output='screen', 
-        parameters=[{'use_sim_time': True, 'autostart': True, 'bond_timeout': 0.0, 
+        parameters=[{'use_sim_time': use_sim_time, 'autostart': True, 'bond_timeout': 0.0, 
                      'node_names': [[ns2, '/planner_server'], [ns2, '/controller_server'], [ns2, '/behavior_server'], [ns2, '/bt_navigator']]}]
     )
 
     ld = LaunchDescription()
     ld.add_action(declare_ns1)
     ld.add_action(declare_ns2)
+    ld.add_action(declare_use_sim_time_cmd)
 
     ld.add_action(planner_ns1)
     ld.add_action(controller_ns1)

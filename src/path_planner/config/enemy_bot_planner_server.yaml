@@ -1,7 +1,7 @@
 planner_server:
   ros__parameters:
-    expected_planner_frequency: 10.0
-    use_sim_time: True
+    enable_stamped_cmd_vel: true
+    use_sim_time: False
     planner_plugins: ["GridBased"]
     GridBased:
       plugin: "nav2_navfn_planner::NavfnPlanner"
@@ -12,26 +12,32 @@ planner_server:
 global_costmap:
   global_costmap:
     ros__parameters:
-      update_frequency: 1.0
-      publish_frequency: 1.0
-      global_frame: map
+      enable_stamped_cmd_vel: true
+      update_frequency: 5.0
+      publish_frequency: 2.0
+      transform_tolerance: 1.0
+      global_frame: map 
+      map_topic: /map
       robot_base_frame: base_link
-      use_sim_time: True
-      resolution: 0.05
+      use_sim_time: False
+      footprint: "[[ 0.189,  0.000], [ 0.134, -0.134], [ 0.000, -0.189], [-0.134, -0.134], [-0.189,  0.000], [-0.134,  0.134], [ 0.000,  0.189], [ 0.134,  0.134]]"
+      resolution: 0.06
       track_unknown_space: true
-      robot_radius: 0.20
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
-
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
         map_subscribe_transient_local: True
-        map_topic: /map
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.35
+      always_send_full_costmap: True
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: True
         observation_sources: scan
         scan:
-          topic: scan        # Auto-namespaced relative topic
+          topic: scan_copy
           max_obstacle_height: 2.0
           clearing: True
           marking: True
@@ -40,8 +46,3 @@ global_costmap:
           raytrace_min_range: 0.0
           obstacle_max_range: 2.5
           obstacle_min_range: 0.0
-      inflation_layer:
-        plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 5.0
-        inflation_radius: 0.75
-      always_send_full_costmap: True

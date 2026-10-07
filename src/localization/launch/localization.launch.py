@@ -10,9 +10,11 @@ from nav2_common.launch import RewrittenYaml
 def generate_launch_description():
     ns1 = LaunchConfiguration('namespace1')
     ns2 = LaunchConfiguration('namespace2')
+    use_sim_time = LaunchConfiguration('use_sim_time')
     
     declare_ns1 = DeclareLaunchArgument('namespace1', default_value='our_bot', description='Namespace for robot 1')
     declare_ns2 = DeclareLaunchArgument('namespace2', default_value='enemy_bot', description='Namespace for robot 2')
+    declare_use_sim_time = DeclareLaunchArgument('use_sim_time', default_value='true', description='Use simulation time')
     
     loc_pkg_share = get_package_share_directory('localization')
     map_file = 'src/map_server/my_nav_map.yaml'
@@ -26,12 +28,12 @@ def generate_launch_description():
     # ==============================================================================
     map_server_node = Node(
         package='nav2_map_server', executable='map_server', name='map_server', output='screen',
-        parameters=[{'use_sim_time': True, 'yaml_filename': map_file}]
+        parameters=[{'use_sim_time': use_sim_time, 'yaml_filename': map_file}]
     )
 
     map_lifecycle_node = Node(
         package='nav2_lifecycle_manager', executable='lifecycle_manager', name='lifecycle_manager_map', output='screen',
-        parameters=[{'use_sim_time': True, 'autostart': True, 'node_names': ['map_server']}]
+        parameters=[{'use_sim_time': use_sim_time, 'autostart': True, 'node_names': ['map_server']}]
     )
 
     # ==============================================================================
@@ -63,12 +65,33 @@ def generate_launch_description():
     )
     lifecycle_ns2 = Node(
         package='nav2_lifecycle_manager', executable='lifecycle_manager', name='lifecycle_manager_loc_ns2', output='screen', 
-        parameters=[{'use_sim_time': True, 'autostart': True, 'bond_timeout': 0.0, 'node_names': [[ns2, '/amcl']]}]
+        parameters=[{'use_sim_time': use_sim_time, 'autostart': True, 'bond_timeout': 0.0, 'node_names': [[ns2, '/amcl']]}]
+    )
+
+
+        # 6. RViz Global Node
+    rviz_config_file = LaunchConfiguration('rviz_config')
+    default_rviz_path = os.path.expanduser('~/mechproject_ws/rvizfiles/rvizfortwobot.rviz')
+    
+    declare_rviz_config_cmd = DeclareLaunchArgument(
+        'rviz_config', default_value=default_rviz_path, description='Path to RViz config'
+    )
+
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        arguments=['-d', rviz_config_file],
+        parameters=[{'use_sim_time': use_sim_time}],
+        output='screen'
     )
 
     ld = LaunchDescription()
     ld.add_action(declare_ns1)
     ld.add_action(declare_ns2)
+    ld.add_action(declare_use_sim_time)
+    ld.add_action(declare_rviz_config_cmd)
+    ld.add_action(rviz_node)
     
     ld.add_action(map_server_node)
     ld.add_action(map_lifecycle_node)
