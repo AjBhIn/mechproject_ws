@@ -49,6 +49,7 @@ controller_server:
       motion_model: "DiffDrive"
       visualize: false
       regenerate_noises: true
+      consider_footprint: true
       
       critics: [
         "ConstraintCritic", "CostCritic", "GoalCritic",
@@ -120,7 +121,14 @@ local_costmap:
       width: 5
       height: 5
       resolution: 0.05
-      robot_radius: 0.20
+      footprint: "[[ 0.189,  0.000],
+            [ 0.134, -0.134],
+            [ 0.000, -0.189],
+            [-0.134, -0.134],
+            [-0.189,  0.000],
+            [-0.134,  0.134],
+            [ 0.000,  0.189],
+            [ 0.134,  0.134]]"
       track_unknown_space: true
       plugins: ["voxel_layer", "inflation_layer"]
 

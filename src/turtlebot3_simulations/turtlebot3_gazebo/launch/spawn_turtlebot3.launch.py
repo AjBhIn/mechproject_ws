@@ -66,12 +66,12 @@ def generate_launch_description():
     )
 
     # Image bridge for camera feed scoped to /our_bot namespace
-    start_gazebo_ros_image_bridge_cmd = Node(
-        package='ros_gz_image',
-        executable='image_bridge',
-        arguments=['/our_bot/camera/image_raw'],
-        output='screen',
-    )
+    # start_gazebo_ros_image_bridge_cmd = Node(
+    #     package='ros_gz_image',
+    #     executable='image_bridge',
+    #     arguments=['/our_bot/camera/image_raw'],
+    #     output='screen',
+    # )
 
     return LaunchDescription([
         declare_x_cmd,
@@ -80,5 +80,5 @@ def generate_launch_description():
         robot_state_publisher_cmd,
         start_gazebo_ros_spawner_cmd,
         start_gazebo_ros_bridge_cmd,
-        start_gazebo_ros_image_bridge_cmd
+        # start_gazebo_ros_image_bridge_cmd
     ])
