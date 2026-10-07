@@ -1,6 +1,6 @@
 bt_navigator:
   ros__parameters:
-    use_sim_time: true
+    use_sim_time: True
     global_frame: map
     robot_base_frame: base_link
     odom_topic: odom
@@ -15,6 +15,3 @@ bt_navigator:
     navigate_through_poses:
       plugin: "nav2_bt_navigator::NavigateThroughPosesNavigator"
       search_window: 5.0
-    error_code_names:
-      - compute_path_error_code
-      - follow_path_error_code
