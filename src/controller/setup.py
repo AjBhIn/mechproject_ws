@@ -28,10 +28,11 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'chaser = controller.chaser_controller:main',
-            'target_broadcaster = controller.target_broadcaster:main',
+            'chaser_calculator = controller.chase_calculator:main',
+            'kill_pose = controller.kill_pose:main',
             'evasion_calculator = controller.evasion_calculator:main',
-            'escape_goal_sender = controller.escape_goal_sender:main',
+            'goal_sender = controller.goal_sender:main',
+            'state_machine = controller.state_machine:main',
         ],
     },
 )

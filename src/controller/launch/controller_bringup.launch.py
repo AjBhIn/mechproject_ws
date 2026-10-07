@@ -13,11 +13,11 @@ def generate_launch_description():
         description='Use simulation (Gazebo) clock if true, hardware clock if false'
     )
 
-    # 1. Target Broadcaster (The Carrot)
-    target_broadcaster = Node(
+    # 1. Kill Pose (The Carrot)
+    kill_pose = Node(
         package='controller', 
-        executable='target_broadcaster',
-        name='target_broadcaster',
+        executable='kill_pose',
+        name='kill_pose',
         parameters=[{'use_sim_time': use_sim_time}],
         output='screen'
     )
@@ -31,20 +31,29 @@ def generate_launch_description():
         output='screen'
     )
 
-    # 3. Chaser Controller (The Tracker)
-    chaser_controller = Node(
+    # 3. Chaser Calculator (The Tracker)
+    chaser_calculator = Node(
         package='controller', 
-        executable='chaser',
-        name='chaser_controller',
+        executable='chaser_calculator',
+        name='chaser_calculator',
         parameters=[{'use_sim_time': use_sim_time}],
         output='screen'
     )
 
-    # 4. Escape Goal Sender (The Panic Button)
-    escape_goal_sender = Node(
+    # 4. Goal Sender 
+    goal_sender = Node(
         package='controller', 
-        executable='escape_goal_sender',
-        name='escape_goal_sender',
+        executable='goal_sender',
+        name='goal_sender',
+        parameters=[{'use_sim_time': use_sim_time}],
+        output='screen'
+    )
+
+    # State machine 
+    state_machine = Node(
+        package='controller', 
+        executable='state_machine',
+        name='state_machine',
         parameters=[{'use_sim_time': use_sim_time}],
         output='screen'
     )
@@ -53,9 +62,10 @@ def generate_launch_description():
     
     ld.add_action(declare_use_sim_time_cmd)
     
-    ld.add_action(target_broadcaster)
+    ld.add_action(kill_pose)
     ld.add_action(evasion_calculator)
-    ld.add_action(chaser_controller)
-    ld.add_action(escape_goal_sender)
+    ld.add_action(chaser_calculator)
+    ld.add_action(goal_sender)
+    ld.add_action(state_machine)
 
     return ld

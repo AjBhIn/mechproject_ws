@@ -1,21 +1,21 @@
-planner_server:
-  ros__parameters:
-    expected_planner_frequency: 10.0
-    use_sim_time: True
-    planner_plugins: ["GridBased"]
-    GridBased:
-      plugin: "nav2_navfn_planner::NavfnPlanner"
-      tolerance: 0.5
-      use_astar: false
-      allow_unknown: true
+enemy_bot:
+  planner_server:
+    ros__parameters:
+      expected_planner_frequency: 10.0
+      use_sim_time: True
+      planner_plugins: ["GridBased"]
+      GridBased:
+        plugin: "nav2_navfn_planner::NavfnPlanner"
+        tolerance: 0.5
+        use_astar: false
+        allow_unknown: true
 
-global_costmap:
   global_costmap:
     ros__parameters:
       update_frequency: 1.0
       publish_frequency: 1.0
       global_frame: map
-      robot_base_frame: base_link
+      robot_base_frame: enemy_bot/base_link
       use_sim_time: True
       resolution: 0.1
       track_unknown_space: true
@@ -38,7 +38,7 @@ global_costmap:
         enabled: True
         observation_sources: scan
         scan:
-          topic: scan  
+          topic: /enemy_bot/scan
           max_obstacle_height: 2.0
           clearing: True
           marking: True

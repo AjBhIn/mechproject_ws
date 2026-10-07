@@ -12,50 +12,80 @@ class StateMachine(Node):
 
         self.state = 'CHASING'
 
-        # TF Listener
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
 
-        # Publishers
         self.state_pub = self.create_publisher(String, 'our_bot/robot_state', 10)
-        self.cmd_pub = self.create_publisher(Twist, 'our_bot/cmd_vel', 10)
+        self.cmd_vel_pub = self.create_publisher(Twist, '/our_bot/cmd_vel', 10)
 
-        # Check threat every 0.1 seconds (10 Hz)
-        self.create_timer(0.1, self.check_threat)
+        # 10 Hz control loop
+        self.timer = self.create_timer(0.1, self.control_loop)
+        self.get_logger().info("State Machine Initialized with Custom Angular Threat Zones.")
 
-    def check_threat(self):
+    def emergency_brake(self):
+        """Stops the robot dead before Nav2 calculates the evasion path."""
+        self.cmd_vel_pub.publish(Twist())
+
+    def get_pursuer_in_enemy_frame(self):
+        """Gets our robot's position relative to the enemy robot."""
         try:
-            # Look up enemy position relative to our robot
-            transform = self.tf_buffer.lookup_transform(
-                'enemy_bot/base_link', 
-                'our_bot/base_link', 
-                rclpy.time.Time(), 
-                timeout=rclpy.duration.Duration(seconds=0.03)
+            trans = self.tf_buffer.lookup_transform(
+                'enemy_bot/base_link', 'our_bot/base_link', 
+                rclpy.time.Time(), timeout=rclpy.duration.Duration(seconds=0.03)
             )
-            rel_x = transform.transform.translation.x
-            rel_y = transform.transform.translation.y
+            return trans.transform.translation.x, trans.transform.translation.y
         except tf2_ros.TransformException:
+            return None, None
+
+    # ==========================================================
+    # USER'S CUSTOM THREAT EVALUATION LOGIC
+    # ==========================================================
+    def evaluate_threat_state(self, rel_x: float, rel_y: float):
+        """Dynamic Danger Zones to cover all 180-degree angles."""
+        distance = math.hypot(rel_x, rel_y)
+        relative_angle_deg = abs(math.degrees(math.atan2(rel_y, rel_x)))
+
+        # 1. Define the angle zones
+        in_front_cone = relative_angle_deg <= 67.5       # The main 135° front camera
+        in_back_cone = relative_angle_deg >= 135.0       # The 90° rear zone
+        
+        # 2. Determine the danger radius based strictly on WHERE we are
+        if in_front_cone:
+            current_threshold = 2.8  # Very dangerous in front!
+        elif in_back_cone:
+            current_threshold = 0.0  # Safe in the back.
+        else:
+            current_threshold = 2.0  # Horizontal/Perpendicular flanks.
+            
+        # 3. Master Distance Check
+        if distance > current_threshold:
+            return False, distance, current_threshold
+            
+        return True, distance, current_threshold
+
+    def control_loop(self):
+        rel_x, rel_y = self.get_pursuer_in_enemy_frame()
+        if rel_x is None: 
             return
 
-        distance = math.hypot(rel_x, rel_y)
+        # Run your custom evaluation
+        in_danger, dist, threshold = self.evaluate_threat_state(rel_x, rel_y)
 
-        # Transition to EVADING if enemy is in front cone (rel_x > -0.2) and within 2.5m
-        if self.state == 'CHASING' and rel_x > -0.2 and distance < 2.5:
-            self.state = 'EVADING'
-            self.get_logger().warn("Enemy detected head-on! Switching to EVADING")
+        # --- STATE MACHINE TRANSITIONS ---
+        if self.state == 'CHASING':
+            # Trigger evasion immediately if we enter the custom danger thresholds
+            if in_danger:
+                self.get_logger().warn(f'DANGER ZONE! Dist: {dist:.2f}m <= {threshold}m. Switching to EVADING.')
+                self.state = 'EVADING'
+                self.emergency_brake()
 
-            # Active steering turn away from enemy
-            turn_cmd = Twist()
-            turn_cmd.linear.x = 0.2
-            turn_cmd.angular.z = 1.8 if rel_y < 0 else -1.8
-            self.cmd_pub.publish(turn_cmd)
+        elif self.state == 'EVADING':
+            # Clear evasion only when we are safely outside the threshold + a 0.3m hysteresis buffer
+            if not in_danger and dist > (threshold + 0.3):
+                self.get_logger().info(f'Clear of FOV (Dist: {dist:.2f}m). Resuming CHASING.')
+                self.state = 'CHASING'
 
-        # Transition back to CHASING if enemy is farther than 3.2m or drove past us (rel_x < -0.4)
-        elif self.state == 'EVADING' and (distance > 3.2 or rel_x < -0.4):
-            self.state = 'CHASING'
-            self.get_logger().info("Danger cleared. Resuming CHASING")
-
-        # Publish state string
+        # Broadcast state to Goal Sender and Evasion Calculator
         msg = String()
         msg.data = self.state
         self.state_pub.publish(msg)
