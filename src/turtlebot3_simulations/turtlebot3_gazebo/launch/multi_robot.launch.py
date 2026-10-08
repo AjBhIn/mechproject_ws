@@ -12,7 +12,9 @@ def generate_launch_description():
     world_file = os.path.join(pkg_turtlebot3_gazebo, 'worlds', 'turtlebot3_world.world')
 
     gz_sim = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(pkg_ros_gz_sim, 'launch', 'gz_sim.launch.py')),
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_ros_gz_sim, 'launch', 'gz_sim.launch.py')
+        ),
         launch_arguments={'gz_args': f'-r {world_file}'}.items()
     )
 
@@ -23,18 +25,35 @@ def generate_launch_description():
         output='screen'
     )
 
+    our_bot_state_pub = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_turtlebot3_gazebo, 'launch', 'state_pub_our_bot.launch.py')
+        )
+    )
+
     our_bot_spawn = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(pkg_turtlebot3_gazebo, 'launch', 'spawn_our_bot.launch.py'))
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_turtlebot3_gazebo, 'launch', 'spawn_our_bot.launch.py')
+        )
+    )
+
+    enemy_bot_state_pub = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_turtlebot3_gazebo, 'launch', 'state_pub_enemy_bot.launch.py')
+        )
     )
 
     enemy_bot_spawn = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(pkg_turtlebot3_gazebo, 'launch', 'spawn_enemy_bot.launch.py'))
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_turtlebot3_gazebo, 'launch', 'spawn_enemy_bot.launch.py')
+        )
     )
 
     return LaunchDescription([
         gz_sim,
         clock_bridge,
+        our_bot_state_pub,
         our_bot_spawn,
+        enemy_bot_state_pub,
         enemy_bot_spawn
-        # Add your state_pub includes here as well
     ])

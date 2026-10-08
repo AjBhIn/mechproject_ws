@@ -46,7 +46,7 @@ our_bot/amcl:
     save_pose_rate: 0.5
     set_initial_pose: true
     initial_pose:
-      x: 0.0
+      x: -2.0
       y: 0.0
       z: 0.0
       yaw: 0.0

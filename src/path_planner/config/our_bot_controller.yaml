@@ -1,9 +1,12 @@
+# LIFECYCLE/NAMESPACE: Scoped node name for /our_bot namespace
 our_bot/controller_server:
   ros__parameters:
+    # TIME: Synchronizes controller node execution with simulation clock
     use_sim_time: True
     controller_frequency: 20.0
     enable_stamped_cmd_vel: true
-    costmap_update_timeout: 0.30
+    # TIME/LIFECYCLE FIX: Increased timeout to 1.0s to prevent controller stalls under sim load
+    costmap_update_timeout: 1.0
     min_x_velocity_threshold: 0.001
     min_y_velocity_threshold: 0.5
     min_theta_velocity_threshold: 0.001
@@ -43,7 +46,8 @@ our_bot/controller_server:
       wz_max: 1.5
       iteration_count: 1
       prune_distance: 1.7
-      transform_tolerance: 0.1
+      # TIME/TF FIX: Increased MPPI transform tolerance to 1.0s to absorb sim clock jitter
+      transform_tolerance: 1.0
       temperature: 0.3
       gamma: 0.015
       motion_model: "DiffDrive"
@@ -109,16 +113,20 @@ our_bot/controller_server:
         max_angle_to_furthest: 1.0
         mode: 0
 
-our_bot/local_costmap:
+# LIFECYCLE/NAMESPACE FIX: Doubled local_costmap key matching ROS 2 schema /our_bot/local_costmap/local_costmap
+our_bot/local_costmap/local_costmap:
   ros__parameters:
+    # TIME: Synchronizes local costmap execution with simulation clock
     use_sim_time: True
     update_frequency: 20.0
     publish_frequency: 20.0
     global_frame: our_bot/odom
     robot_base_frame: our_bot/base_link
     rolling_window: true
-    width: 5
-    height: 5
+    width: 3
+    height: 3
+    # TIME/TF: Allows up to 1.0s simulation delay for local odom->base_link TF lookups
+    transform_tolerance: 1.0
     resolution: 0.05
     footprint: "[[ 0.189,  0.000],
           [ 0.134, -0.134],
@@ -146,6 +154,7 @@ our_bot/local_costmap:
       mark_threshold: 0
       observation_sources: scan
       scan:
+        # CONNECTION: Points voxel layer explicitly to robot laser scan topic
         topic: /our_bot/scan
         sensor_frame: our_bot/base_scan
         max_obstacle_height: 2.0

@@ -1,7 +1,10 @@
+# LIFECYCLE/NAMESPACE: Scoped node name for /our_bot namespace
 our_bot/behavior_server:
   ros__parameters:
+    # TIME: Synchronizes recovery behaviors with simulation clock
     use_sim_time: True
     enable_stamped_cmd_vel: true
+    # CONNECTION: Directs recovery behaviors to local costmap topics
     costmap_topic: local_costmap/costmap_raw
     footprint_topic: local_costmap/published_footprint
     cycle_frequency: 10.0
@@ -15,7 +18,8 @@ our_bot/behavior_server:
     local_frame: our_bot/odom
     global_frame: map
     robot_base_frame: our_bot/base_link
-    transform_timeout: 0.1
+    # TIME/TF FIX: Increased transform timeout to 1.0s to prevent spin/backup drops on sim clock jitter
+    transform_timeout: 1.0
     simulate_ahead_time: 2.0
     max_rotational_vel: 1.0
     min_rotational_vel: 0.1
