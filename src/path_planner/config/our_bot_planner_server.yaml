@@ -9,14 +9,14 @@ our_bot/planner_server:
       # JAZZY PLUGIN SYNTAX: ROS 2 Jazzy pluginlib class export for Navfn Planner uses '::'
       plugin: "nav2_navfn_planner::NavfnPlanner"
       tolerance: 0.5
-      use_astar: false
+      use_astar: true # improves performance in cluttered environments
       allow_unknown: true
 
 # LIFECYCLE/NAMESPACE: Scoped costmap key matching ROS 2 namespace /our_bot/global_costmap
 our_bot/global_costmap/global_costmap:
   ros__parameters:
-    update_frequency: 1.0
-    publish_frequency: 1.0
+    update_frequency: 4.0
+    publish_frequency: 4.0
     global_frame: map
     robot_base_frame: our_bot/base_link
     # TIME: Synchronizes costmap updates with simulation clock
@@ -58,6 +58,6 @@ our_bot/global_costmap/global_costmap:
         obstacle_min_range: 0.15
     inflation_layer:
       plugin: "nav2_costmap_2d::InflationLayer"
-      cost_scaling_factor: 5.0
-      inflation_radius: 0.75
+      cost_scaling_factor: 12.0
+      inflation_radius: 0.45
     always_send_full_costmap: True

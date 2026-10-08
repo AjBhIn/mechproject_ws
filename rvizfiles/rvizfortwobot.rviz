@@ -9,6 +9,7 @@ Panels:
         - /Map1/Topic1
         - /Map1/Update Topic1
         - /Global1/Update Topic1
+        - /OurBotLocal1/Topic1
         - /OurBotLocal1/Update Topic1
         - /EnemyBotTF1/Frames1
       Splitter Ratio: 0.5
@@ -267,7 +268,7 @@ Visualization Manager:
       Name: OurBotLocal
       Topic:
         Depth: 5
-        Durability Policy: Volatile
+        Durability Policy: Transient Local
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
@@ -298,6 +299,52 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
+        enemy_bot/base_footprint:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        enemy_bot/base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        enemy_bot/base_scan:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        enemy_bot/camera_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        enemy_bot/camera_rgb_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        enemy_bot/camera_rgb_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        enemy_bot/caster_back_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        enemy_bot/imu_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        enemy_bot/wheel_left_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        enemy_bot/wheel_right_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
       Mass Properties:
         Inertia: false
         Mass: false
@@ -487,7 +534,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /our_bot/initialpose
+        Value: /enemy_bot/initialpose
     - Class: rviz_default_plugins/SetGoal
       Topic:
         Depth: 5
