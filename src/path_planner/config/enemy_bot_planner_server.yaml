@@ -51,6 +51,6 @@ enemy_bot/global_costmap/global_costmap:
         obstacle_min_range: 0.15
     inflation_layer:
       plugin: "nav2_costmap_2d::InflationLayer"
-      cost_scaling_factor: 12.0 # Clears the pillar gaps for the global planner
-      inflation_radius: 0.45
+      cost_scaling_factor: 10.0 # Opens global pillar gaps for enemy pathing
+      inflation_radius: 0.40
     always_send_full_costmap: True

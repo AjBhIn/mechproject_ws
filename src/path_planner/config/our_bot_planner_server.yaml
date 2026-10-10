@@ -11,12 +11,12 @@ our_bot/planner_server:
 
 our_bot/global_costmap/global_costmap:
   ros__parameters:
-    update_frequency: 4.0
-    publish_frequency: 4.0
+    update_frequency: 10.0
+    publish_frequency: 10.0
     global_frame: map
     robot_base_frame: our_bot/base_link
     use_sim_time: True
-    resolution: 0.1
+    resolution: 0.04
     track_unknown_space: true
     transform_tolerance: 0.2
     footprint: "[[ 0.189,  0.000],
