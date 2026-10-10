@@ -23,6 +23,9 @@ class GoalSender(Node):
         self.last_sent_pose = None
         self.active_goal_handle = None
         self.is_goal_pending = False
+        
+        # Thread-safe flag to force immediate update on state change without deadlocking
+        self.force_update = False 
 
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
@@ -31,25 +34,15 @@ class GoalSender(Node):
         self.nav_client = ActionClient(self, NavigateToPose, self.action_name)
         
         self.timer = self.create_timer(0.05, self.control_loop)
-        self.get_logger().info("Robust Goal Sender initialized with ADAPTIVE pacing.")
+        self.get_logger().info("Robust Goal Sender initialized with NATIVE preemption.")
 
     def state_cb(self, msg):
         new_state = msg.data
         if self.state != new_state:
-            self.get_logger().info(f"State transition: {self.state} -> {new_state}. Canceling active goals.")
+            self.get_logger().info(f"State transition: {self.state} -> {new_state}. Utilizing Nav2 preemption.")
             self.state = new_state
-            self.cancel_active_goal()
-            
-            # --- ADD THIS LINE TO PREVENT THE FREEZE ---
-            self.is_goal_pending = False  
-            
-            self.last_sent_pose = None
-            self.last_goal_time = 0.0
-
-    def cancel_active_goal(self):
-        if self.active_goal_handle is not None and self.active_goal_handle.accepted:
-            self.active_goal_handle.cancel_goal_async()
-            self.active_goal_handle = None
+            # Trigger immediate goal send on next loop instead of manually canceling
+            self.force_update = True 
 
     def get_target_tf(self):
         target_frame = self.escape_frame if self.state == 'EVADING' else self.chase_frame
@@ -59,7 +52,7 @@ class GoalSender(Node):
                 timeout=rclpy.duration.Duration(seconds=0.05)
             )
             return trans
-        except (tf2_ros.LookupException, tf2_ros.ExtrapolationException) as e:
+        except tf2_ros.TransformException:
             return None
 
     def goal_response_callback(self, future):
@@ -73,6 +66,8 @@ class GoalSender(Node):
     def control_loop(self):
         if not self.nav_client.wait_for_server(timeout_sec=0.01): 
             return
+            
+        # GUARD: Never interleave action requests. Wait for the server to reply.
         if self.is_goal_pending: 
             return
 
@@ -87,27 +82,29 @@ class GoalSender(Node):
         try:
             robot_tf = self.tf_buffer.lookup_transform(self.map_frame, 'our_bot/base_link', rclpy.time.Time())
             dist_to_target = math.hypot(t_x - robot_tf.transform.translation.x, t_y - robot_tf.transform.translation.y)
-        except:
+        except tf2_ros.TransformException:
             dist_to_target = 2.0
 
-        # TUNING POINT: ADAPTIVE PACING THRESHOLDS
-        # If your physical bot suffers from heavy stop-and-go stuttering, increase dynamic_min_time (lower the Hz).
-        # If your bot tracks too loosely, decrease dynamic_min_time (higher Hz) and decrease dynamic_min_dist.
         if dist_to_target < 1.5:
-            dynamic_min_dist = 0.10   # Only update if target moves 10cm
-            dynamic_min_time = 0.25   # Max 4 Hz goal sending
+            dynamic_min_dist = 0.10   
+            dynamic_min_time = 0.25   
         else:
-            dynamic_min_dist = 0.30   # Only update if target moves 30cm
-            dynamic_min_time = 0.50   # Max 2 Hz goal sending
+            dynamic_min_dist = 0.30   
+            dynamic_min_time = 0.50   
 
-        if self.last_sent_pose is not None:
-            dx = t_x - self.last_sent_pose.pose.position.x
-            dy = t_y - self.last_sent_pose.pose.position.y
-            dist_moved = math.hypot(dx, dy)
-            time_elapsed = now_sec - self.last_goal_time
+        # Only apply pacing limits if we aren't being forced to update by a state change
+        if not self.force_update:
+            if self.last_sent_pose is not None:
+                dx = t_x - self.last_sent_pose.pose.position.x
+                dy = t_y - self.last_sent_pose.pose.position.y
+                dist_moved = math.hypot(dx, dy)
+                time_elapsed = now_sec - self.last_goal_time
 
-            if dist_moved < dynamic_min_dist or time_elapsed < dynamic_min_time:
-                return
+                if dist_moved < dynamic_min_dist or time_elapsed < dynamic_min_time:
+                    return
+
+        # Reset flag and commit to sending goal
+        self.force_update = False
 
         goal = PoseStamped()
         goal.header.frame_id = self.map_frame
@@ -118,8 +115,6 @@ class GoalSender(Node):
 
         goal_msg = NavigateToPose.Goal()
         goal_msg.pose = goal
-
-        self.cancel_active_goal()
 
         self.is_goal_pending = True
         self.last_goal_time = now_sec

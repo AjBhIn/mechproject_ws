@@ -38,7 +38,7 @@ class EvasionCalculator(Node):
         self.map_origin_x, self.map_origin_y = 0.0, 0.0
         
         # TUNING POINT: Cost threshold for evasion paths. Lower this if physical bot bumps walls while running away.
-        self.MAX_SAFE_COST = 100
+        self.MAX_SAFE_COST = 180
 
         self.last_target_x, self.last_target_y = None, None
         
@@ -186,24 +186,24 @@ class EvasionCalculator(Node):
             
             if not safe_points:
                 self.get_logger().warn("No safe points! Executing forward U-turn escape.")
-                # Calculate vector pushing away from the enemy
                 dx = global_x - enemy_global_x
                 dy = global_y - enemy_global_y
                 dist = math.hypot(dx, dy)
                 if dist == 0: dist = 0.01
                 
-                # Set target 1.0m away in the opposite direction
                 target_x = global_x + (dx / dist) * 1.0
                 target_y = global_y + (dy / dist) * 1.0
-                
-                # Orient the robot to face the escape direction so it drives forward naturally
                 target_yaw = math.atan2(dy, dx)
             else:
                 best_target = self.get_best_escape_target(safe_points, global_x, global_y, our_yaw, enemy_global_x, enemy_global_y)
                 if best_target is None: 
                     return
                 target_x, target_y, target_yaw = best_target
+        
+        # REMOVED the MIN_UPDATE_DIST early return here.
+        self.last_target_x, self.last_target_y = target_x, target_y
 
+        # UNCONDITIONAL BROADCAST: Ensures goal_sender always has a target to follow
         t = TransformStamped()
         t.header.stamp = self.get_clock().now().to_msg()
         t.header.frame_id = self.map_frame
