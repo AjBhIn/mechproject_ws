@@ -2,29 +2,25 @@
 enemy_bot/planner_server:
   ros__parameters:
     expected_planner_frequency: 10.0
-    # TIME: Forces planner_server execution to track Gazebo simulation clock
     use_sim_time: True
     planner_plugins: ["GridBased"]
     GridBased:
-      # JAZZY PLUGIN SYNTAX: ROS 2 Jazzy pluginlib class export for Navfn Planner uses '::'
       plugin: "nav2_navfn_planner::NavfnPlanner"
       tolerance: 0.5
-      use_astar: false
+      use_astar: true           # Swapped to A* for faster, direct paths
       allow_unknown: true
 
 # LIFECYCLE/NAMESPACE: Scoped double-key matching ROS 2 namespace /enemy_bot/global_costmap/global_costmap
 enemy_bot/global_costmap/global_costmap:
   ros__parameters:
-    update_frequency: 1.0
-    publish_frequency: 1.0
+    update_frequency: 4.0       # Increased frequency to react to your bot faster
+    publish_frequency: 4.0
     global_frame: map
     robot_base_frame: enemy_bot/base_link
-    # TIME: Synchronizes costmap updates with simulation clock
     use_sim_time: True
     resolution: 0.1
     track_unknown_space: true
-    # TIME/TF: Allows up to 1.0s delay during map -> base_link TF lookups to handle sim clock jitter
-    transform_tolerance: 1.0
+    transform_tolerance: 0.2    # Hardened TF lookups
     footprint: "[[ 0.189,  0.000],
           [ 0.134, -0.134],
           [ 0.000, -0.189],
@@ -37,16 +33,13 @@ enemy_bot/global_costmap/global_costmap:
 
     static_layer:
       plugin: "nav2_costmap_2d::StaticLayer"
-      # CONNECTION: Enables transient local durability so costmap receives maps published before activation
       map_subscribe_transient_local: True
-      # CONNECTION: Explicitly maps the static layer to the global /map topic
       map_topic: /map
     obstacle_layer:
       plugin: "nav2_costmap_2d::ObstacleLayer"
       enabled: True
       observation_sources: scan
       scan:
-        # CONNECTION: Points obstacle layer explicitly to enemy_bot laser scan topic
         topic: /enemy_bot/scan
         max_obstacle_height: 2.0
         clearing: True
@@ -58,6 +51,6 @@ enemy_bot/global_costmap/global_costmap:
         obstacle_min_range: 0.15
     inflation_layer:
       plugin: "nav2_costmap_2d::InflationLayer"
-      cost_scaling_factor: 5.0
-      inflation_radius: 0.75
+      cost_scaling_factor: 12.0 # Clears the pillar gaps for the global planner
+      inflation_radius: 0.45
     always_send_full_costmap: True

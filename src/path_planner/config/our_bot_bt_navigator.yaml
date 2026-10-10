@@ -15,7 +15,7 @@ our_bot/bt_navigator:
     navigators: ["navigate_to_pose", "navigate_through_poses"]
     navigate_to_pose:
       plugin: "nav2_bt_navigator::NavigateToPoseNavigator"
-      search_window: 5.0
+      search_window: 4.0
     navigate_through_poses:
       plugin: "nav2_bt_navigator::NavigateThroughPosesNavigator"
-      search_window: 5.0
+      search_window: 4.0

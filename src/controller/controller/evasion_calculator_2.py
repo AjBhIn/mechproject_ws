@@ -26,15 +26,23 @@ class EvasionCalculator(Node):
         self.state_sub = self.create_subscription(String, 'our_bot/robot_state', self.state_cb, 10)
         self.costmap_sub = self.create_subscription(OccupancyGrid, '/our_bot/global_costmap/costmap', self.costmap_callback, 10)
 
+        # TUNING POINT: Distances (meters) to search for safe escape points.
+        # If your physical bot is fast, you might want to extend this to [1.0, 1.5, 2.0, 2.5].
         self.sample_radii = [0.8, 1.2, 1.8, 2.0]
+        
+        # TUNING POINT: Search angle resolution. 8 degrees is fine, but if CPU is high on the real bot, change to 12 or 15.
         self.angle_steps = [(math.cos(math.radians(deg)), math.sin(math.radians(deg))) for deg in range(0, 360, 8)]
 
         self.map_data, self.map_res = None, 0.05
         self.map_width, self.map_height = 0, 0
         self.map_origin_x, self.map_origin_y = 0.0, 0.0
+        
+        # TUNING POINT: Cost threshold for evasion paths. Lower this if physical bot bumps walls while running away.
         self.MAX_SAFE_COST = 100
 
         self.last_target_x, self.last_target_y = None, None
+        
+        # TUNING POINT: How much the target must move before broadcasting a new evasion point.
         self.MIN_UPDATE_DIST = 0.02
         self.memory_bank: List[Tuple[float, float, float]] = []
 
@@ -86,6 +94,7 @@ class EvasionCalculator(Node):
         current_dist_to_enemy = math.hypot(our_x - enemy_x, our_y - enemy_y)
         for mx, my, myaw in self.memory_bank:
             mem_dist_to_enemy = math.hypot(mx - enemy_x, my - enemy_y)
+            # TUNING POINT: Hysteresis for keeping the current escape point.
             if mem_dist_to_enemy <= (current_dist_to_enemy + 0.3): continue
             if not self.is_path_clear(our_x, our_y, mx, my): continue
             if self.get_cell_cost(mx, my) > self.MAX_SAFE_COST: continue
@@ -93,7 +102,14 @@ class EvasionCalculator(Node):
         return still_valid_points
 
     def get_adaptive_weights(self, current_cost, dist_to_enemy):
+        # TUNING POINT: These weights dictate the robot's "personality" when running away.
+        # w_dist = Prioritize getting far from enemy
+        # w_speed = Prioritize longer escape vectors
+        # w_turn = Penalty for having to turn around to escape
+        # w_cost = Penalty for running near walls
         w_dist, w_speed, w_turn, w_cost = 10.0, 2.0, 4.0, 0.3
+        
+        # TUNING POINT: Emergency weights if near a wall or enemy
         if current_cost > 30: w_cost, w_turn = 1.0, 0.5
         if dist_to_enemy < 1.2: w_dist, w_speed = 20.0, 4.0
         return {'w_dist': w_dist, 'w_speed': w_speed, 'w_turn': w_turn, 'w_cost': w_cost}
@@ -138,14 +154,23 @@ class EvasionCalculator(Node):
         return best_point
 
     def control_loop(self):
+        if self.map_data is None:
+            return
+
         if self.current_state != 'EVADING':
             self.last_target_x = None
             self.memory_bank.clear()
             return
 
         try:
-            tf_global = self.tf_buffer.lookup_transform(self.map_frame, self.robot_frame, rclpy.time.Time())
-            tf_enemy_global = self.tf_buffer.lookup_transform(self.map_frame, self.enemy_frame, rclpy.time.Time())
+            tf_global = self.tf_buffer.lookup_transform(
+                self.map_frame, self.robot_frame, rclpy.time.Time(), 
+                timeout=rclpy.duration.Duration(seconds=0.05)
+            )
+            tf_enemy_global = self.tf_buffer.lookup_transform(
+                self.map_frame, self.enemy_frame, rclpy.time.Time(), 
+                timeout=rclpy.duration.Duration(seconds=0.05)
+            )
         except tf2_ros.TransformException:
             return
 
@@ -158,15 +183,26 @@ class EvasionCalculator(Node):
             target_x, target_y, target_yaw = valid_cached_points[0]
         else:
             safe_points = self.get_safe_escape_points(global_x, global_y)
-            if not safe_points: return
-            best_target = self.get_best_escape_target(safe_points, global_x, global_y, our_yaw, enemy_global_x, enemy_global_y)
-            if best_target is None: return
-            target_x, target_y, target_yaw = best_target
-        
-        if self.last_target_x is not None:
-            if math.hypot(target_x - self.last_target_x, target_y - self.last_target_y) < self.MIN_UPDATE_DIST: return
-
-        self.last_target_x, self.last_target_y = target_x, target_y
+            
+            if not safe_points:
+                self.get_logger().warn("No safe points! Executing forward U-turn escape.")
+                # Calculate vector pushing away from the enemy
+                dx = global_x - enemy_global_x
+                dy = global_y - enemy_global_y
+                dist = math.hypot(dx, dy)
+                if dist == 0: dist = 0.01
+                
+                # Set target 1.0m away in the opposite direction
+                target_x = global_x + (dx / dist) * 1.0
+                target_y = global_y + (dy / dist) * 1.0
+                
+                # Orient the robot to face the escape direction so it drives forward naturally
+                target_yaw = math.atan2(dy, dx)
+            else:
+                best_target = self.get_best_escape_target(safe_points, global_x, global_y, our_yaw, enemy_global_x, enemy_global_y)
+                if best_target is None: 
+                    return
+                target_x, target_y, target_yaw = best_target
 
         t = TransformStamped()
         t.header.stamp = self.get_clock().now().to_msg()

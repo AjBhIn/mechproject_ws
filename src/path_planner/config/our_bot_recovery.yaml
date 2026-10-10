@@ -19,7 +19,7 @@ our_bot/behavior_server:
     global_frame: map
     robot_base_frame: our_bot/base_link
     # TIME/TF FIX: Increased transform timeout to 1.0s to prevent spin/backup drops on sim clock jitter
-    transform_timeout: 1.0
+    transform_timeout: 0.2
     simulate_ahead_time: 2.0
     max_rotational_vel: 1.0
     min_rotational_vel: 0.1

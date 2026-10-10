@@ -16,35 +16,35 @@ class StateMachine(Node):
 
         self.state_pub = self.create_publisher(String, 'our_bot/robot_state', 10)
 
-        # 10 Hz control loop
         self.timer = self.create_timer(0.1, self.control_loop)
-        self.get_logger().info("State Machine Initialized (Clean State Sync).")
+        self.get_logger().info("State Machine Initialized (Hardened TF Sync).")
 
     def get_pursuer_in_enemy_frame(self):
-        """Gets our robot's position relative to the enemy robot."""
         try:
             trans = self.tf_buffer.lookup_transform(
                 'enemy_bot/base_link', 'our_bot/base_link', 
-                rclpy.time.Time(), timeout=rclpy.duration.Duration(seconds=0.03)
+                rclpy.time.Time(), timeout=rclpy.duration.Duration(seconds=0.05)
             )
             return trans.transform.translation.x, trans.transform.translation.y
         except tf2_ros.TransformException:
             return None, None
 
     def evaluate_threat_state(self, rel_x: float, rel_y: float):
-        """Dynamic Danger Zones to cover all 180-degree angles."""
         distance = math.hypot(rel_x, rel_y)
         relative_angle_deg = abs(math.degrees(math.atan2(rel_y, rel_x)))
 
-        in_front_cone = relative_angle_deg <= 67.5       # The main 135° front zone
-        in_back_cone = relative_angle_deg >= 135.0       # The 90° rear zone
+        # TUNING POINT: Threat angle cones. 
+        # Narrow these if your bot is too skittish on the sides.
+        in_front_cone = relative_angle_deg <= 67.5       
+        in_back_cone = relative_angle_deg >= 135.0       
         
+        # TUNING POINT: Threat Distances.
         if in_front_cone:
-            current_threshold = 2.8  # Front threat zone
+            current_threshold = 2.8   # Danger distance when facing the enemy's front
         elif in_back_cone:
-            current_threshold = 0.0  # Safe rear zone
+            current_threshold = 0.0   # Danger distance when behind the enemy (0 = always safe)
         else:
-            current_threshold = 2.0  # Side flanks
+            current_threshold = 2.0   # Danger distance on the flanks
             
         if distance > current_threshold:
             return False, distance, current_threshold
@@ -58,13 +58,14 @@ class StateMachine(Node):
 
         in_danger, dist, threshold = self.evaluate_threat_state(rel_x, rel_y)
 
-        # State transitions with hysteresis buffer
         if self.state == 'CHASING':
             if in_danger:
                 self.get_logger().warn(f'DANGER ZONE! Dist: {dist:.2f}m <= {threshold}m. Switching to EVADING.')
                 self.state = 'EVADING'
 
         elif self.state == 'EVADING':
+            # TUNING POINT: The + 0.3 is the hysteresis buffer. 
+            # If your bot rapidly flips between chasing/evading on the edge of the threat zone, increase this to 0.5.
             if not in_danger and dist > (threshold + 0.3):
                 self.get_logger().info(f'Clear of threat (Dist: {dist:.2f}m). Resuming CHASING.')
                 self.state = 'CHASING'

@@ -24,7 +24,7 @@ our_bot/global_costmap/global_costmap:
     resolution: 0.1
     track_unknown_space: true
     # TIME/TF: Allows up to 1.0s delay during map -> base_link TF lookups to handle sim clock jitter
-    transform_tolerance: 1.0
+    transform_tolerance: 0.2
     footprint: "[[ 0.189,  0.000],
           [ 0.134, -0.134],
           [ 0.000, -0.189],
