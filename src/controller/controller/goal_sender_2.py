@@ -79,15 +79,17 @@ class GoalSender(Node):
         t_x = target_tf.transform.translation.x
         t_y = target_tf.transform.translation.y
 
+        # Get the robot's current position in the map frame to compute distance to target
         try:
             robot_tf = self.tf_buffer.lookup_transform(self.map_frame, 'our_bot/base_link', rclpy.time.Time())
             dist_to_target = math.hypot(t_x - robot_tf.transform.translation.x, t_y - robot_tf.transform.translation.y)
         except tf2_ros.TransformException:
             dist_to_target = 2.0
 
+        # Dynamic spacing adjustment
         if dist_to_target < 1.5:
             dynamic_min_dist = 0.10   
-            dynamic_min_time = 0.25   
+            dynamic_min_time = 0.15   
         else:
             dynamic_min_dist = 0.30   
             dynamic_min_time = 0.50   
@@ -116,6 +118,7 @@ class GoalSender(Node):
         goal_msg = NavigateToPose.Goal()
         goal_msg.pose = goal
 
+        # Saving the previous state
         self.is_goal_pending = True
         self.last_goal_time = now_sec
         self.last_sent_pose = goal

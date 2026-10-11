@@ -14,6 +14,7 @@ class StateMachine(Node):
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
 
+        # Created our own publisher for robot state to avoid circular dependency with goal_sender
         self.state_pub = self.create_publisher(String, 'our_bot/robot_state', 10)
 
         self.timer = self.create_timer(0.1, self.control_loop)
@@ -29,6 +30,7 @@ class StateMachine(Node):
         except tf2_ros.TransformException:
             return None, None
 
+    # Checking if our bot is in the danger zone of the enemy bot
     def evaluate_threat_state(self, rel_x: float, rel_y: float):
         distance = math.hypot(rel_x, rel_y)
         relative_angle_deg = abs(math.degrees(math.atan2(rel_y, rel_x)))
@@ -52,6 +54,7 @@ class StateMachine(Node):
         return True, distance, current_threshold
 
     def control_loop(self):
+        # Get the relative position of our bot in the enemy bot's frame
         rel_x, rel_y = self.get_pursuer_in_enemy_frame()
         if rel_x is None: 
             return
