@@ -28,23 +28,27 @@ class EvasionCalculator(Node):
         self.costmap_sub = self.create_subscription(OccupancyGrid, '/our_bot/global_costmap/costmap', self.costmap_callback, 10)
 
         # TUNING POINT: Distances (meters) to search for safe escape points.
-        # If your physical bot is fast, you might want to extend this to [1.0, 1.5, 2.0, 2.5].
-        self.sample_radii = [0.8, 1.2, 1.8, 2.0]
+        # Fixed to 1.7 max to perfectly match 'prune_distance' in nav2_params.yaml
+        self.sample_radii = [0.8, 1.2, 1.7]
         
         # TUNING POINT: Search angle resolution. 8 degrees is fine, but if CPU is high on the real bot, change to 12 or 15.
         self.angle_steps = [(math.cos(math.radians(deg)), math.sin(math.radians(deg))) for deg in range(0, 360, 8)]
 
         self.map_data =  None
-        self.map_res = 0.05
+        # Changed from 0.05 to 0.06 to perfectly match your local_costmap YAML resolution.
+        self.map_res = 0.06
         self.map_width = 0
         self.map_height = 0
         self.map_origin_x = 0.0 
         self.map_origin_y = 0.0
         
         # TUNING POINT: Cost threshold for evasion paths. Lower this if physical bot bumps walls while running away.
-        self.MAX_SAFE_COST = 150
+        # Depends on the Map size and state of it
+        # Keep it under 180 (does not matter the map size)
+        self.MAX_SAFE_COST = 180
 
         self.last_target_x, self.last_target_y = None, None
+        self.MIN_UPDATE_DIST = 0.05
         
         # TUNING POINT: How much the target must move before broadcasting a new evasion point.
         self.MIN_UPDATE_DIST = 0.02
@@ -89,7 +93,7 @@ class EvasionCalculator(Node):
         # VIRTUAL BOUNDARY PADDING: 
         # Treat the outer 15 cells (0.75 meters at 0.05m res) as solid walls
         # This prevents target TFs from ever landing near the edge of the map
-        MARGIN = 15
+        MARGIN = 10
         if raw_col < MARGIN or raw_col >= (self.map_width - MARGIN) or \
            raw_row < MARGIN or raw_row >= (self.map_height - MARGIN):
             return 255
@@ -134,6 +138,8 @@ class EvasionCalculator(Node):
         # 1. Fast Pass: Straight line
         if self.is_path_clear(start_x, start_y, end_x, end_y):
             return True
+
+        self.get_logger().info("Adding a elbow to the path")
             
         direct_angle = math.atan2(end_y - start_y, end_x - start_x)
         total_dist = math.hypot(end_x - start_x, end_y - start_y)
@@ -181,13 +187,13 @@ class EvasionCalculator(Node):
         # w_speed = Prioritize longer escape vectors
         # w_turn = Penalty for having to turn around to escape
         # w_cost = Penalty for running near walls
-        w_dist, w_speed, w_turn, w_cost = 10.0, 2.0, 4.0, 0.3
+        w_dist, w_speed, w_turn, w_cost = 10.0, 2.0, 8.0, 0.3  # w_turn heavily increased to stop S-curves
         
         # TUNING POINT: Emergency weights if near a wall or enemy
         # Dynamic weight adjuster
-        bad_cost = 60
+        bad_cost = 30  # Lowered so emergency wall-avoidance kicks in earlier
         min_dist_to_enemy = 1.2
-        if current_cost > bad_cost: w_cost, w_turn = 1.0, 0.5
+        if current_cost > bad_cost: w_cost, w_turn = 2.0, 5.0  # Increased w_cost to aggressively push off walls
         if dist_to_enemy < min_dist_to_enemy: w_dist, w_speed = 20.0, 4.0
         return {'w_dist': w_dist, 'w_speed': w_speed, 'w_turn': w_turn, 'w_cost': w_cost}
 
@@ -237,15 +243,21 @@ class EvasionCalculator(Node):
 
         # Run through the safe points collect from the get_safe_escape_point method
         for cand_x, cand_y, r, cost in safe_points:
+            # Get the angle difference between us the goal pose
+            angle_to_cand = math.atan2(cand_y - our_y, cand_x - our_x)
+            turn_diff = abs(math.atan2(math.sin(angle_to_cand - our_yaw), math.cos(angle_to_cand - our_yaw)))
+            
+            # HARD CUTOFF FOR CURVATURE: Refuse any point that requires turning more than 75 degrees
+            if turn_diff > math.radians(75):
+                continue
+                
             # Add points to distance and radius usage
             score = (math.hypot(cand_x - enemy_x, cand_y - enemy_y) * weights['w_dist']) + (r * weights['w_speed'])
 
-            
-            # Get the angle difference between us the goal pose
             # deduct points when there big angle difference between us the goal pose
-            angle_to_cand = math.atan2(cand_y - our_y, cand_x - our_x)
-            score -= abs(math.atan2(math.sin(angle_to_cand - our_yaw), math.cos(angle_to_cand - our_yaw))) * weights['w_turn']
+            score -= turn_diff * weights['w_turn']
             score -= cost * weights['w_cost']
+            
             # Add extra points when the cost is very low
             if 0 <= cost < 15: score += 12.0
 
@@ -296,6 +308,7 @@ class EvasionCalculator(Node):
         valid_cached_points = self.check_memory_bank(global_x, global_y, enemy_global_x, enemy_global_y)
         if valid_cached_points:
             target_x, target_y, target_yaw = valid_cached_points[0]
+            self.get_logger().info("Running this path from Memory bank")
         else:
             safe_points = self.get_safe_escape_points(global_x, global_y)
             
@@ -310,6 +323,7 @@ class EvasionCalculator(Node):
                 target_x = global_x + (dx / dist) * 1.0
                 target_y = global_y + (dy / dist) * 1.0
                 target_yaw = math.atan2(dy, dx)
+                self.get_logger().info("Running this random path")
             else:
                 # get the best path and put that as the goal
                 best_target = self.get_best_escape_target(safe_points, global_x, global_y, our_yaw, enemy_global_x, enemy_global_y)
@@ -317,8 +331,21 @@ class EvasionCalculator(Node):
                     return
                 target_x, target_y, target_yaw = best_target
         
-        # REMOVED the MIN_UPDATE_DIST early return here.
-        self.last_target_x, self.last_target_y = target_x, target_y
+        # ==========================================
+        # ADD THE PAUSER / DEADBAND HERE
+        # ==========================================
+        if self.last_target_x is not None:
+            dist_change = math.hypot(target_x - self.last_target_x, target_y - self.last_target_y)
+            if dist_change < self.MIN_UPDATE_DIST:
+                # If it hasn't moved much, keep the exact same target!
+                target_x = self.last_target_x
+                target_y = self.last_target_y
+                target_yaw = self.last_target_yaw
+
+        # Save the final locked target for the next loop
+        self.last_target_x = target_x
+        self.last_target_y = target_y
+        self.last_target_yaw = target_yaw
 
         # UNCONDITIONAL BROADCAST: 
         # Ensures goal_sender always has a target to follow

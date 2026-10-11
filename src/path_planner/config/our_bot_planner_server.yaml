@@ -50,5 +50,5 @@ our_bot/global_costmap/global_costmap:
     inflation_layer:
       plugin: "nav2_costmap_2d::InflationLayer"
       cost_scaling_factor: 10.0   # CHANGED: Transplanted from lecture (tb402_planner_server.yaml)
-      inflation_radius: 0.35     # CHANGED: Transplanted from lecture (tb402_planner_server.yaml)
+      inflation_radius: 0.45     # CHANGED: Transplanted from lecture (tb402_planner_server.yaml)
     always_send_full_costmap: True
