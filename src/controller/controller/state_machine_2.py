@@ -11,14 +11,15 @@ class StateMachine(Node):
 
         self.state = 'CHASING'
 
+        self.last_dist = None
+        self.last_time = None
+
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
-
-        # Created our own publisher for robot state to avoid circular dependency with goal_sender
         self.state_pub = self.create_publisher(String, 'our_bot/robot_state', 10)
 
         self.timer = self.create_timer(0.1, self.control_loop)
-        self.get_logger().info("State Machine Initialized (Hardened TF Sync).")
+        self.get_logger().info("State Machine Initialized (Velocity-Weighted Threat Assessment).")
 
     def get_pursuer_in_enemy_frame(self):
         try:
@@ -30,36 +31,45 @@ class StateMachine(Node):
         except tf2_ros.TransformException:
             return None, None
 
-    # Checking if our bot is in the danger zone of the enemy bot
-    def evaluate_threat_state(self, rel_x: float, rel_y: float):
+    def evaluate_threat_state(self, rel_x: float, rel_y: float, now_sec: float):
         distance = math.hypot(rel_x, rel_y)
         relative_angle_deg = abs(math.degrees(math.atan2(rel_y, rel_x)))
 
-        # TUNING POINT: Threat angle cones. 
-        # Narrow these if your bot is too skittish on the sides.
+        closing_speed = 0.0
+        if self.last_dist is not None and self.last_time is not None:
+            dt = now_sec - self.last_time
+            if dt > 0.01:
+                closing_speed = -(distance - self.last_dist) / dt
+        
+        self.last_dist = distance
+        self.last_time = now_sec
+
         in_front_cone = relative_angle_deg <= 67.5       
         in_back_cone = relative_angle_deg >= 135.0       
         
-        # TUNING POINT: Threat Distances.
         if in_front_cone:
-            current_threshold = 2.8   # Danger distance when facing the enemy's front
+            current_threshold = 2.8   
         elif in_back_cone:
-            current_threshold = 0.0   # Danger distance when behind the enemy (0 = always safe)
+            current_threshold = 0.0   
         else:
-            current_threshold = 2.0   # Danger distance on the flanks
+            current_threshold = 2.0   
             
         if distance > current_threshold:
+            return False, distance, current_threshold
+
+        # If enemy is close but actively opening distance rapidly, remain offensive
+        if closing_speed < -0.2 and distance > 1.2:
             return False, distance, current_threshold
             
         return True, distance, current_threshold
 
     def control_loop(self):
-        # Get the relative position of our bot in the enemy bot's frame
         rel_x, rel_y = self.get_pursuer_in_enemy_frame()
         if rel_x is None: 
             return
 
-        in_danger, dist, threshold = self.evaluate_threat_state(rel_x, rel_y)
+        now_sec = self.get_clock().now().nanoseconds / 1e9
+        in_danger, dist, threshold = self.evaluate_threat_state(rel_x, rel_y, now_sec)
 
         if self.state == 'CHASING':
             if in_danger:
@@ -67,8 +77,6 @@ class StateMachine(Node):
                 self.state = 'EVADING'
 
         elif self.state == 'EVADING':
-            # TUNING POINT: The + 0.3 is the hysteresis buffer. 
-            # If your bot rapidly flips between chasing/evading on the edge of the threat zone, increase this to 0.5.
             if not in_danger and dist > (threshold + 0.3):
                 self.get_logger().info(f'Clear of threat (Dist: {dist:.2f}m). Resuming CHASING.')
                 self.state = 'CHASING'

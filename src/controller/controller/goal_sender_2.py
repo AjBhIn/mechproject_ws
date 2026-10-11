@@ -29,20 +29,18 @@ class GoalSender(Node):
 
         self.state_sub = self.create_subscription(String, 'our_bot/robot_state', self.state_cb, 10)
         
-        # Dual Action Clients for strict path control
         self.nav_pose_client = ActionClient(self, NavigateToPose, 'our_bot/navigate_to_pose')
         self.nav_through_client = ActionClient(self, NavigateThroughPoses, 'our_bot/navigate_through_poses')
         
         self.timer = self.create_timer(0.05, self.control_loop)
-        self.get_logger().info("Robust Goal Sender initialized with strict path compliance.")
+        self.get_logger().info("Goal Sender Initialized (Multi-Pose Dogleg Compliant).")
 
     def state_cb(self, msg):
         new_state = msg.data
         if self.state != new_state:
-            self.get_logger().info(f"State transition: {self.state} -> {new_state}. Preempting path.")
+            self.get_logger().info(f"State transition: {self.state} -> {new_state}. Preempting active goal.")
             self.state = new_state
             self.force_update = True 
-            # Cancel active goal immediately on state change
             if self.active_goal_handle is not None:
                 self.active_goal_handle.cancel_goal_async()
                 self.is_goal_pending = False
@@ -74,10 +72,12 @@ class GoalSender(Node):
             self.active_goal_handle = None
 
     def control_loop(self):
-        if self.is_goal_pending: return
+        if self.is_goal_pending: 
+            return
 
         target_tf = self.get_target_tf(self.escape_frame if self.state == 'EVADING' else self.chase_frame)
-        if target_tf is None: return
+        if target_tf is None: 
+            return
 
         now_sec = self.get_clock().now().nanoseconds / 1e9
         t_x, t_y = target_tf.transform.translation.x, target_tf.transform.translation.y
@@ -98,14 +98,14 @@ class GoalSender(Node):
         self.force_update = False
         final_goal_msg = self.create_pose_msg(target_tf)
 
-        # Dogleg Pathing Logic
         if self.state == 'EVADING':
             via_tf = self.get_target_tf(self.escape_via_frame)
             if via_tf is not None:
                 via_dist = math.hypot(via_tf.transform.translation.x - t_x, via_tf.transform.translation.y - t_y)
                 
                 if via_dist > 0.1:
-                    if not self.nav_through_client.wait_for_server(timeout_sec=0.01): return
+                    if not self.nav_through_client.wait_for_server(timeout_sec=0.01): 
+                        return
                     via_goal_msg = self.create_pose_msg(via_tf)
                     
                     goal = NavigateThroughPoses.Goal()
@@ -116,8 +116,8 @@ class GoalSender(Node):
                     self.last_goal_time, self.last_sent_pose = now_sec, final_goal_msg
                     return
 
-        # Standard Point-to-Point Pathing (Chase or Straight Evasion)
-        if not self.nav_pose_client.wait_for_server(timeout_sec=0.01): return
+        if not self.nav_pose_client.wait_for_server(timeout_sec=0.01): 
+            return
         
         goal = NavigateToPose.Goal()
         goal.pose = final_goal_msg
