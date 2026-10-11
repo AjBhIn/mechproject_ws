@@ -28,46 +28,42 @@ our_bot/controller_server:
     # ========================================================================
     # REGULATED PURE PURSUIT (RPP) CONTROLLER
     # ========================================================================
-    FollowPath:
+      FollowPath:
       plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
-      
-      # --- Core Speeds ---
-      desired_linear_vel: 0.4          
-      min_approach_linear_velocity: 0.05 
-      max_angular_accel: 0.7           
-      
-      # --- The "Carrot" Lookahead ---
-      lookahead_dist: 0.6              # <-- TUNED: 0.6m provides a smooth arc without overshooting tight corners.
-      min_lookahead_dist: 0.3          # <-- TUNED: Increased from 0.2 to 0.3 to prevent twitching at very low speeds.
-      max_lookahead_dist: 0.8          
-      lookahead_time: 1.5              # <-- TUNED: Scaled up to 1.5. At 0.4 m/s max speed, this pushes the carrot 0.6m ahead natively.
-      use_velocity_scaled_lookahead: true
-      max_robot_pose_search_dist: 2.0  
-      
-      # --- Smart Scaling (Prevents wall rubbing) ---
-      use_regulated_linear_velocity_scaling: true      
-      regulated_linear_scaling_min_radius: 0.5         
-      regulated_linear_scaling_min_speed: 0.25         
-      
-      use_cost_regulated_linear_velocity_scaling: true 
-      cost_scaling_dist: 0.3                           
+      max_linear_vel: 0.5
+      min_linear_vel: 0.5
+      max_angular_vel: 2.5
+      min_angular_vel: -2.5
+      max_linear_accel: 2.5
+      max_linear_decel: 0.0
+      max_angular_accel: 3.2
+      max_angular_decel: -3.2
+      lookahead_dist: 0.6
+      min_lookahead_dist: 0.3
+      max_lookahead_dist: 0.9
+      lookahead_time: 1.5
+      rotate_to_heading_angular_vel: 1.8
+      use_velocity_scaled_lookahead_dist: false
+      min_approach_linear_velocity: 0.05
+      approach_velocity_scaling_dist: 1.0
+      use_collision_detection: true
+      max_allowed_time_to_collision_up_to_carrot: 1.0
+      use_regulated_linear_velocity_scaling: true
+      use_cost_regulated_linear_velocity_scaling: false
+      regulated_linear_scaling_min_radius: 0.9
+      regulated_linear_scaling_min_speed: 0.25
+      use_fixed_curvature_lookahead: false
+      curvature_lookahead_dist: 1.0
+      use_rotate_to_heading: true
+      rotate_to_heading_min_angle: 0.785
+      interpolate_curvature_after_goal: false
+      cost_scaling_dist: 0.3
       cost_scaling_gain: 1.0
       inflation_cost_scaling_factor: 3.0
-      
-      # --- Collision & Reversing ---
-      use_collision_detection: true    
-      max_allowed_time_to_collision_up_to_carrot: 1.0 
-      allow_reversing: false           
-      
-      # --- Rotation Behaviors ---
-      use_rotate_to_heading: true      
-      rotate_to_heading_min_angle: 0.78 
-      rotate_to_heading_angular_vel: 0.8 # <-- TUNED: Bumped from 0.4 to 0.8 so the robot doesn't stall for 3 seconds trying to turn around.
-      
-      transform_tolerance: 0.3           # <-- TUNED: Bumped from 0.2 to 0.3 to absorb high-frequency TF broadcast delays from your Python node.
+      use_dynamic_window: true
       allow_obstacle_checking_beyond_goal: true
 
-      
+
 our_bot/local_costmap/local_costmap:
   ros__parameters:
     use_sim_time: True
