@@ -34,12 +34,12 @@ class EvasionCalculator(Node):
         # TUNING POINT: Search angle resolution. 8 degrees is fine, but if CPU is high on the real bot, change to 12 or 15.
         self.angle_steps = [(math.cos(math.radians(deg)), math.sin(math.radians(deg))) for deg in range(0, 360, 8)]
 
-        self.map_data, 
-        self.map_res = None, 0.05
-        self.map_width, 
-        self.map_height = 0, 0
-        self.map_origin_x, 
-        self.map_origin_y = 0.0, 0.0
+        self.map_data =  None
+        self.map_res = 0.05
+        self.map_width = 0
+        self.map_height = 0
+        self.map_origin_x = 0.0 
+        self.map_origin_y = 0.0
         
         # TUNING POINT: Cost threshold for evasion paths. Lower this if physical bot bumps walls while running away.
         self.MAX_SAFE_COST = 150
@@ -54,14 +54,17 @@ class EvasionCalculator(Node):
         # The runner!
         self.timer = self.create_timer(0.1, self.control_loop)
 
+    # getting the state
     def state_cb(self, msg):
         self.current_state = msg.data
 
+    # angle to quaternion
     def get_yaw_from_quaternion(self, q):
         siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
         cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
         return math.atan2(siny_cosp, cosy_cosp)
 
+    # Get the map info from the topic
     def costmap_callback(self, msg: OccupancyGrid):
 
         self.map_data = np.array(msg.data, dtype=np.int16)
@@ -253,7 +256,7 @@ class EvasionCalculator(Node):
             # Storing the best_point and higest_score values
             if score > highest_score: 
                 highest_score = score 
-                best_point = (score, cand_x, cand_y, angle_to_cand)
+                best_point = (cand_x, cand_y, angle_to_cand)
 
         # Sorting Alg, based on the score
         all_scored_points.sort(key=lambda item: item[0], reverse=True)
