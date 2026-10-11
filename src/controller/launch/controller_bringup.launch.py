@@ -40,7 +40,7 @@ def generate_launch_description():
         output='screen'
     )
 
-    # 4. Goal Sender 
+    # # 4. Goal Sender 
     goal_sender = Node(
         package='controller', 
         executable='goal_sender',
